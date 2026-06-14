@@ -1,8 +1,7 @@
 import { ApiError } from "@mediamedicine/shared/errors";
 import type { AuthSessionItem } from "@mediamedicine/shared/schemas";
 import type { Env } from "../env";
-import { mapGoTrueError, type GoTrueErrorBody } from "./auth-errors";
-import { serviceHeaders } from "./gotrue";
+import { createServiceClient } from "./supabase";
 
 const SESSION_CACHE_TTL_SECONDS = 30;
 const MAX_ACTIVE_SESSIONS = 10;
@@ -17,14 +16,6 @@ export interface GoTrueAdminSession {
   ip?: string | null;
 }
 
-interface SessionsListResponse {
-  sessions?: GoTrueAdminSession[];
-}
-
-function authBaseUrl(env: Env): string {
-  return `${env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1`;
-}
-
 function cacheKey(userId: string): string {
   return `sessions:${userId}`;
 }
@@ -35,16 +26,16 @@ export async function invalidateSessionCache(env: Env, userId: string): Promise<
 }
 
 async function fetchUserSessions(env: Env, userId: string): Promise<GoTrueAdminSession[]> {
-  const res = await fetch(`${authBaseUrl(env)}/admin/users/${userId}/sessions`, {
-    method: "GET",
-    headers: serviceHeaders(env),
+  const admin = createServiceClient(env);
+  const { data, error } = await admin.rpc("list_user_auth_sessions", {
+    p_user_id: userId,
   });
 
-  const data = (await res.json()) as SessionsListResponse & GoTrueErrorBody;
-  if (!res.ok) {
-    throw mapGoTrueError(res.status, data);
+  if (error) {
+    throw new ApiError("internal_error", error.message, 500);
   }
-  return data.sessions ?? [];
+
+  return (data ?? []) as GoTrueAdminSession[];
 }
 
 export async function listUserSessionsCached(
@@ -74,14 +65,18 @@ export async function deleteUserSession(
   userId: string,
   sessionId: string,
 ): Promise<void> {
-  const res = await fetch(`${authBaseUrl(env)}/admin/users/${userId}/sessions/${sessionId}`, {
-    method: "DELETE",
-    headers: serviceHeaders(env),
+  const admin = createServiceClient(env);
+  const { data, error } = await admin.rpc("revoke_user_auth_session", {
+    p_user_id: userId,
+    p_session_id: sessionId,
   });
 
-  if (!res.ok) {
-    const data = (await res.json()) as GoTrueErrorBody;
-    throw mapGoTrueError(res.status, data);
+  if (error) {
+    throw new ApiError("internal_error", error.message, 500);
+  }
+
+  if (!data) {
+    throw new ApiError("not_found", "Session not found", 404);
   }
 
   await invalidateSessionCache(env, userId);

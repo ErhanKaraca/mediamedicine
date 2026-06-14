@@ -76,15 +76,23 @@ async function finalizeAuthSession(
   const sessionId = session.sessionId;
 
   if (sessionId) {
-    await upsertSessionDeviceMetadata(c.env, {
-      userId: session.user.id,
-      sessionId,
-      deviceName: opts.deviceName,
-      platform: opts.platform,
-      userAgent,
-    });
-    await enforceMaxSessions(c.env, session.user.id, sessionId);
-    await invalidateSessionCache(c.env, session.user.id);
+    try {
+      await upsertSessionDeviceMetadata(c.env, {
+        userId: session.user.id,
+        sessionId,
+        deviceName: opts.deviceName,
+        platform: opts.platform,
+        userAgent,
+      });
+      await enforceMaxSessions(c.env, session.user.id, sessionId);
+      await invalidateSessionCache(c.env, session.user.id);
+    } catch (err) {
+      console.error("post-auth session finalize failed", {
+        userId: session.user.id,
+        sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   if (opts.isNewSession) {
