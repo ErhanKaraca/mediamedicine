@@ -1,4 +1,11 @@
-import type { AuthSession } from "@mediamedicine/shared/schemas";
+import type {
+  AuthLogoutBody,
+  AuthMeResponse,
+  AuthSession,
+  AuthSessionItem,
+  OtpSendBody,
+  OtpVerifyBody,
+} from "@mediamedicine/shared/schemas";
 
 export interface ApiClientOptions {
   baseUrl: string;
@@ -50,6 +57,7 @@ export class MediaMedicineClient {
       method,
       headers: reqHeaders,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      credentials: "include",
     });
 
     const data = (await res.json()) as T & { error?: { code: string; message: string; requestId?: string } };
@@ -69,16 +77,51 @@ export class MediaMedicineClient {
     return this.request<{ status: string; service: string; version: string }>("GET", "/v1/health");
   }
 
-  login(email: string, password: string) {
-    return this.request<AuthSession>("POST", "/v1/auth/login", { email, password });
+  sendOtp(body: OtpSendBody) {
+    return this.request<{ ok: true; message: string }>("POST", "/v1/auth/otp/send", body);
   }
 
-  signup(email: string, password: string, displayName?: string) {
-    return this.request<AuthSession>("POST", "/v1/auth/signup", { email, password, displayName });
+  verifyOtp(body: OtpVerifyBody, useRefreshCookie = false) {
+    return this.request<AuthSession>("POST", "/v1/auth/otp/verify", body, {
+      ...(useRefreshCookie ? { "X-Use-Refresh-Cookie": "true" } : {}),
+    });
+  }
+
+  refresh(refreshToken?: string, useRefreshCookie = false) {
+    return this.request<AuthSession>(
+      "POST",
+      "/v1/auth/refresh",
+      refreshToken ? { refreshToken } : {},
+      useRefreshCookie ? { "X-Use-Refresh-Cookie": "true" } : undefined,
+    );
+  }
+
+  logout(body: AuthLogoutBody = { scope: "local" }) {
+    return this.request<{ ok: true }>("POST", "/v1/auth/logout", body);
+  }
+
+  authMe() {
+    return this.request<AuthMeResponse>("GET", "/v1/auth/me");
+  }
+
+  listSessions() {
+    return this.request<{ items: AuthSessionItem[] }>("GET", "/v1/auth/sessions");
+  }
+
+  revokeSession(sessionId: string) {
+    return this.request<{ ok: true }>("DELETE", `/v1/auth/sessions/${sessionId}`);
+  }
+
+  changeEmail(email: string) {
+    return this.request<{ ok: true; message: string }>("PATCH", "/v1/auth/email", { email });
   }
 
   me() {
     return this.request<{ user: { id: string; email?: string }; profiles: unknown[] }>("GET", "/v1/me");
+  }
+
+  deleteAccount(confirm = true) {
+    return this.request<{ status: string }>("POST", "/v1/account/delete", { confirm });
   }
 
   createPost(body: Record<string, unknown>, idempotencyKey?: string) {

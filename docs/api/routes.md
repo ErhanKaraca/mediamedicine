@@ -8,10 +8,16 @@ Kaynak: [`packages/shared/src/edge-map.ts`](../../packages/shared/src/edge-map.t
 |--------|-----------|-------|
 | GET | `/v1/health` | Worker (Supabase ping) |
 | GET | `/v1/openapi.json` | OpenAPI spec |
-| POST | `/v1/auth/signup` | GoTrue proxy |
-| POST | `/v1/auth/login` | GoTrue proxy |
-| POST | `/v1/auth/refresh` | GoTrue proxy |
-| POST | `/v1/auth/logout` | GoTrue proxy |
+| POST | `/v1/auth/otp/send` | GoTrue OTP (always 200) |
+| POST | `/v1/auth/otp/verify` | GoTrue verify → session |
+| POST | `/v1/auth/refresh` | GoTrue refresh |
+| POST | `/v1/auth/logout` | GoTrue logout (`scope`) |
+| GET | `/v1/auth/me` | GoTrue user |
+| GET | `/v1/auth/sessions` | Admin session list (KV cache) |
+| DELETE | `/v1/auth/sessions/:sessionId` | Revoke session |
+| GET | `/v1/auth/oauth/:provider` | OAuth start |
+| GET | `/v1/auth/callback` | OAuth callback |
+| PATCH | `/v1/auth/email` | GoTrue email change |
 
 ## Okuma (PostgREST, RLS)
 

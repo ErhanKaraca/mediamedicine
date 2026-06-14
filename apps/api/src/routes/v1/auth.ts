@@ -1,111 +1,169 @@
+import type { Context } from "hono";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { ApiError } from "@mediamedicine/shared/errors";
 import {
-  AuthLoginBodySchema,
+  AuthEmailChangeBodySchema,
+  AuthEmailChangeResponseSchema,
+  AuthLogoutBodySchema,
+  AuthMeResponseSchema,
   AuthRefreshBodySchema,
   AuthSessionSchema,
-  AuthSignupBodySchema,
+  AuthSessionItemSchema,
+  AuthSessionsResponseSchema,
+  OAuthProviderSchema,
+  OtpSendBodySchema,
+  OtpSendResponseSchema,
+  OtpVerifyBodySchema,
 } from "@mediamedicine/shared/schemas";
 import type { AppVariables, Env } from "../../env";
+import { recordNewSessionEvent } from "../../lib/auth-audit";
+import { EMAIL_CHANGE_MESSAGE, OTP_SEND_SUCCESS_MESSAGE } from "../../lib/auth-errors";
+import {
+  disableSessionDeviceMetadata,
+  loadDeviceMetadataMap,
+  upsertSessionDeviceMetadata,
+} from "../../lib/device-metadata";
+import {
+  assertSessionOwnedByUser,
+  decodeCurrentSessionId,
+  deleteUserSession,
+  enforceMaxSessions,
+  invalidateSessionCache,
+  listUserSessionsCached,
+  toSessionItems,
+} from "../../lib/gotrue-admin";
+import {
+  buildOAuthAuthorizeUrl,
+  gotrueExchangePkce,
+  gotrueGetUser,
+  gotrueLogout,
+  gotrueRefresh,
+  gotrueSendOtp,
+  gotrueUpdateEmail,
+  gotrueVerifyOtp,
+} from "../../lib/gotrue";
+import {
+  clearOAuthCookieHeader,
+  generatePkcePair,
+  oauthCookieHeader,
+  readOAuthCookie,
+  signOAuthState,
+  verifyOAuthState,
+} from "../../lib/oauth";
+import {
+  clearRefreshCookieHeader,
+  isSecureRequest,
+  readRefreshCookie,
+  refreshCookieHeader,
+  shouldUseRefreshCookie,
+} from "../../lib/session-cookie";
 
 export const authRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>();
 
-function authHeaders(env: Env): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    apikey: env.SUPABASE_ANON_KEY,
-  };
-}
+type AuthContext = Context<{ Bindings: Env; Variables: AppVariables }>;
 
-interface GoTrueSession {
-  access_token?: string;
-  refresh_token?: string;
-  expires_in?: number;
-  token_type?: string;
-  user?: { id?: string; email?: string };
-  error?: string;
-  error_description?: string;
-  msg?: string;
-}
+async function finalizeAuthSession(
+  c: AuthContext,
+  session: Awaited<ReturnType<typeof gotrueVerifyOtp>>,
+  opts: {
+    platform?: "ios" | "android" | "web";
+    deviceName?: string;
+    useCookie?: boolean;
+    isNewSession?: boolean;
+  },
+) {
+  const userAgent = c.req.header("User-Agent");
+  const sessionId = session.sessionId;
 
-function normalizeSession(data: GoTrueSession) {
-  if (!data.access_token || !data.refresh_token || !data.user?.id) {
-    throw new ApiError("auth_failed", data.error_description ?? data.msg ?? "Authentication failed", 401);
+  if (sessionId) {
+    await upsertSessionDeviceMetadata(c.env, {
+      userId: session.user.id,
+      sessionId,
+      deviceName: opts.deviceName,
+      platform: opts.platform,
+      userAgent,
+    });
+    await enforceMaxSessions(c.env, session.user.id, sessionId);
+    await invalidateSessionCache(c.env, session.user.id);
   }
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresIn: data.expires_in ?? 3600,
-    tokenType: data.token_type ?? "bearer",
-    user: {
-      id: data.user.id,
-      email: data.user.email,
+
+  if (opts.isNewSession) {
+    recordNewSessionEvent(c.env, session.user.id, opts.platform, opts.deviceName);
+  }
+
+  const secure = isSecureRequest(c.req.url);
+  if (shouldUseRefreshCookie(opts.platform, opts.useCookie ?? false)) {
+    c.header("Set-Cookie", refreshCookieHeader(session.refreshToken, secure), { append: true });
+  }
+
+  const { refreshToken, ...publicSession } = session;
+  if (shouldUseRefreshCookie(opts.platform, opts.useCookie ?? false)) {
+    return { ...publicSession, refreshToken: "" };
+  }
+  return session;
+}
+
+const otpSendRoute = createRoute({
+  method: "post",
+  path: "/auth/otp/send",
+  tags: ["Auth"],
+  request: {
+    body: { content: { "application/json": { schema: OtpSendBodySchema } } },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: OtpSendResponseSchema } },
+      description: "OTP dispatch requested (always 200)",
     },
-  };
-}
+  },
+});
 
-async function gotrueFetch(env: Env, path: string, init: RequestInit): Promise<GoTrueSession> {
-  const base = env.SUPABASE_URL.replace(/\/$/, "");
-  const res = await fetch(`${base}/auth/v1${path}`, {
-    ...init,
-    headers: { ...authHeaders(env), ...(init.headers ?? {}) },
-  });
-  const data = (await res.json()) as GoTrueSession;
-  if (!res.ok) {
-    throw new ApiError(
-      "auth_failed",
-      data.error_description ?? data.msg ?? data.error ?? "Authentication failed",
-      res.status === 400 ? 400 : 401,
-    );
+authRoutes.openapi(otpSendRoute, async (c) => {
+  const body = c.req.valid("json");
+  try {
+    await gotrueSendOtp(c.env, body.email, body.intent);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "rate_limited") throw err;
+    // enumeration-safe: swallow send failures except rate limit
   }
-  return data;
-}
+  return c.json({ ok: true as const, message: OTP_SEND_SUCCESS_MESSAGE });
+});
 
-const signupRoute = createRoute({
+const otpVerifyRoute = createRoute({
   method: "post",
-  path: "/auth/signup",
+  path: "/auth/otp/verify",
   tags: ["Auth"],
   request: {
-    body: { content: { "application/json": { schema: AuthSignupBodySchema } } },
+    body: { content: { "application/json": { schema: OtpVerifyBodySchema } } },
   },
   responses: {
-    200: { content: { "application/json": { schema: AuthSessionSchema } }, description: "Signed up" },
-    400: { description: "Validation error" },
+    200: { content: { "application/json": { schema: AuthSessionSchema } }, description: "Verified" },
+    401: { description: "Invalid OTP" },
+    404: { description: "User not found (login intent)" },
   },
 });
 
-authRoutes.openapi(signupRoute, async (c) => {
+authRoutes.openapi(otpVerifyRoute, async (c) => {
   const body = c.req.valid("json");
-  const data = await gotrueFetch(c.env, "/signup", {
-    method: "POST",
-    body: JSON.stringify({
-      email: body.email,
-      password: body.password,
-      data: body.displayName ? { display_name: body.displayName } : undefined,
-    }),
-  });
-  return c.json(normalizeSession(data));
-});
+  const useCookie = c.req.header("X-Use-Refresh-Cookie") === "true";
 
-const loginRoute = createRoute({
-  method: "post",
-  path: "/auth/login",
-  tags: ["Auth"],
-  request: {
-    body: { content: { "application/json": { schema: AuthLoginBodySchema } } },
-  },
-  responses: {
-    200: { content: { "application/json": { schema: AuthSessionSchema } }, description: "Logged in" },
-  },
-});
+  let session;
+  try {
+    session = await gotrueVerifyOtp(c.env, body.email, body.code);
+  } catch (err) {
+    if (body.intent === "login" && err instanceof ApiError && err.code === "auth_failed") {
+      throw new ApiError("user_not_found", "No account found for this email", 404);
+    }
+    throw err;
+  }
 
-authRoutes.openapi(loginRoute, async (c) => {
-  const body = c.req.valid("json");
-  const data = await gotrueFetch(c.env, "/token?grant_type=password", {
-    method: "POST",
-    body: JSON.stringify({ email: body.email, password: body.password }),
+  const response = await finalizeAuthSession(c, session, {
+    platform: body.platform,
+    deviceName: body.deviceName,
+    useCookie,
+    isNewSession: true,
   });
-  return c.json(normalizeSession(data));
+  return c.json(response);
 });
 
 const refreshRoute = createRoute({
@@ -122,24 +180,36 @@ const refreshRoute = createRoute({
 
 authRoutes.openapi(refreshRoute, async (c) => {
   const body = c.req.valid("json");
-  const data = await gotrueFetch(c.env, "/token?grant_type=refresh_token", {
-    method: "POST",
-    body: JSON.stringify({ refresh_token: body.refreshToken }),
-  });
-  return c.json(normalizeSession(data));
+  const cookieToken = readRefreshCookie(c.req.header("Cookie"));
+  const refreshToken = body.refreshToken ?? cookieToken;
+  if (!refreshToken) throw new ApiError("auth_failed", "Missing refresh token", 401);
+
+  const session = await gotrueRefresh(c.env, refreshToken);
+  const useCookie = Boolean(cookieToken) || c.req.header("X-Use-Refresh-Cookie") === "true";
+  const secure = isSecureRequest(c.req.url);
+
+  if (useCookie) {
+    c.header("Set-Cookie", refreshCookieHeader(session.refreshToken, secure), { append: true });
+    const { refreshToken: _rt, ...publicSession } = session;
+    return c.json({ ...publicSession, refreshToken: "" });
+  }
+  return c.json(session);
 });
 
 const logoutRoute = createRoute({
   method: "post",
   path: "/auth/logout",
   tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: { "application/json": { schema: AuthLogoutBodySchema } },
+      required: false,
+    },
+  },
   responses: {
     200: {
-      content: {
-        "application/json": {
-          schema: z.object({ ok: z.literal(true) }),
-        },
-      },
+      content: { "application/json": { schema: z.object({ ok: z.literal(true) }) } },
       description: "Logged out",
     },
   },
@@ -149,14 +219,256 @@ authRoutes.openapi(logoutRoute, async (c) => {
   const token = c.get("accessToken");
   if (!token) throw new ApiError("unauthorized", "Missing token", 401);
 
-  const base = c.env.SUPABASE_URL.replace(/\/$/, "");
-  await fetch(`${base}/auth/v1/logout`, {
-    method: "POST",
-    headers: {
-      ...authHeaders(c.env),
-      Authorization: `Bearer ${token}`,
+  let scope: "local" | "others" | "global" = "local";
+  let refreshToken: string | undefined;
+  const contentType = c.req.header("Content-Type");
+  if (contentType?.includes("application/json")) {
+    try {
+      const body = c.req.valid("json");
+      scope = body.scope ?? "local";
+      refreshToken = body.refreshToken;
+    } catch {
+      // empty body ok
+    }
+  }
+
+  const cookieToken = readRefreshCookie(c.req.header("Cookie"));
+  refreshToken = refreshToken ?? cookieToken;
+
+  await gotrueLogout(c.env, token, refreshToken, scope);
+
+  const userId = c.get("userId");
+  if (userId) {
+    await invalidateSessionCache(c.env, userId);
+    const sessionId = await decodeCurrentSessionId(token);
+    if (sessionId && scope !== "others") {
+      await disableSessionDeviceMetadata(c.env, userId, sessionId);
+    }
+    if (scope === "global" || scope === "others") {
+      // device rows for revoked sessions remain disabled opportunistically on individual revoke
+    }
+  }
+
+  const secure = isSecureRequest(c.req.url);
+  c.header("Set-Cookie", clearRefreshCookieHeader(secure), { append: true });
+  return c.json({ ok: true as const });
+});
+
+const authMeRoute = createRoute({
+  method: "get",
+  path: "/auth/me",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: { content: { "application/json": { schema: AuthMeResponseSchema } }, description: "Auth user" },
+  },
+});
+
+authRoutes.openapi(authMeRoute, async (c) => {
+  const token = c.get("accessToken");
+  if (!token) throw new ApiError("unauthorized", "Not authenticated", 401);
+
+  const user = await gotrueGetUser(c.env, token);
+  return c.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      emailConfirmed: Boolean(user.email_confirmed_at),
+      createdAt: user.created_at,
     },
   });
+});
 
+const sessionsListRoute = createRoute({
+  method: "get",
+  path: "/auth/sessions",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      content: { "application/json": { schema: AuthSessionsResponseSchema } },
+      description: "Active sessions",
+    },
+  },
+});
+
+authRoutes.openapi(sessionsListRoute, async (c) => {
+  const userId = c.get("userId");
+  const token = c.get("accessToken");
+  if (!userId || !token) throw new ApiError("unauthorized", "Not authenticated", 401);
+
+  const sessions = await listUserSessionsCached(c.env, userId);
+  const currentSessionId = await decodeCurrentSessionId(token);
+  const meta = await loadDeviceMetadataMap(
+    c.env,
+    userId,
+    sessions.map((s) => s.id),
+  );
+
+  return c.json({ items: toSessionItems(sessions, currentSessionId, meta) });
+});
+
+const sessionDeleteRoute = createRoute({
+  method: "delete",
+  path: "/auth/sessions/{sessionId}",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ sessionId: z.string().uuid() }),
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: z.object({ ok: z.literal(true) }) } },
+      description: "Session revoked",
+    },
+  },
+});
+
+authRoutes.openapi(sessionDeleteRoute, async (c) => {
+  const userId = c.get("userId");
+  if (!userId) throw new ApiError("unauthorized", "Not authenticated", 401);
+
+  const { sessionId } = c.req.valid("param");
+  await assertSessionOwnedByUser(c.env, userId, sessionId);
+  await deleteUserSession(c.env, userId, sessionId);
+  await disableSessionDeviceMetadata(c.env, userId, sessionId);
   return c.json({ ok: true as const });
+});
+
+const oauthStartRoute = createRoute({
+  method: "get",
+  path: "/auth/oauth/{provider}",
+  tags: ["Auth"],
+  request: {
+    params: z.object({ provider: OAuthProviderSchema }),
+    query: z.object({
+      redirectTo: z.string().url().optional(),
+    }),
+  },
+  responses: {
+    302: { description: "Redirect to provider" },
+  },
+});
+
+authRoutes.openapi(oauthStartRoute, async (c) => {
+  const { provider } = c.req.valid("param");
+  const query = c.req.valid("query");
+  const { codeVerifier, codeChallenge } = await generatePkcePair();
+  const state = crypto.randomUUID();
+
+  const requestUrl = new URL(c.req.url);
+  const callbackUrl = `${requestUrl.origin}/v1/auth/callback`;
+
+  const signed = await signOAuthState(c.env, {
+    state,
+    codeVerifier,
+    redirectTo: query.redirectTo,
+  });
+
+  const authorizeUrl = buildOAuthAuthorizeUrl(
+    c.env,
+    provider,
+    callbackUrl,
+    codeChallenge,
+    state,
+  );
+
+  const secure = isSecureRequest(c.req.url);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: authorizeUrl,
+      "Set-Cookie": oauthCookieHeader(signed, secure),
+    },
+  });
+});
+
+const oauthCallbackRoute = createRoute({
+  method: "get",
+  path: "/auth/callback",
+  tags: ["Auth"],
+  request: {
+    query: z.object({
+      code: z.string().optional(),
+      state: z.string().optional(),
+      error: z.string().optional(),
+      error_description: z.string().optional(),
+    }),
+  },
+  responses: {
+    200: { content: { "application/json": { schema: AuthSessionSchema } }, description: "OAuth session" },
+    302: { description: "Redirect to app with session" },
+  },
+});
+
+authRoutes.openapi(oauthCallbackRoute, async (c) => {
+  const query = c.req.valid("query");
+  if (query.error) {
+    throw new ApiError("oauth_failed", query.error_description ?? query.error, 401);
+  }
+  if (!query.code || !query.state) {
+    throw new ApiError("oauth_failed", "Missing OAuth callback parameters", 400);
+  }
+
+  const cookie = readOAuthCookie(c.req.header("Cookie"));
+  if (!cookie) throw new ApiError("oauth_failed", "OAuth state expired", 401);
+
+  const stored = await verifyOAuthState(c.env, cookie);
+  if (stored.state !== query.state) {
+    throw new ApiError("oauth_failed", "Invalid OAuth state", 401);
+  }
+
+  const session = await gotrueExchangePkce(c.env, query.code, stored.codeVerifier);
+  const response = await finalizeAuthSession(c, session, {
+    platform: "web",
+    isNewSession: true,
+    useCookie: true,
+  });
+
+  const secure = isSecureRequest(c.req.url);
+  const headers = new Headers({ "Content-Type": "application/json" });
+  headers.append("Set-Cookie", clearOAuthCookieHeader(secure));
+
+  if (stored.redirectTo) {
+    const redirectUrl = new URL(stored.redirectTo);
+    redirectUrl.searchParams.set("accessToken", response.accessToken);
+    if (response.refreshToken) {
+      redirectUrl.searchParams.set("refreshToken", response.refreshToken);
+    }
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: redirectUrl.toString(),
+        "Set-Cookie": clearOAuthCookieHeader(secure),
+      },
+    });
+  }
+
+  headers.append("Set-Cookie", refreshCookieHeader(session.refreshToken, secure));
+  return new Response(JSON.stringify(response), { status: 200, headers });
+});
+
+const emailChangeRoute = createRoute({
+  method: "patch",
+  path: "/auth/email",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: { content: { "application/json": { schema: AuthEmailChangeBodySchema } } },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: AuthEmailChangeResponseSchema } },
+      description: "Email change initiated (GoTrue confirmation link)",
+    },
+  },
+});
+
+authRoutes.openapi(emailChangeRoute, async (c) => {
+  const token = c.get("accessToken");
+  if (!token) throw new ApiError("unauthorized", "Not authenticated", 401);
+
+  const body = c.req.valid("json");
+  await gotrueUpdateEmail(c.env, token, body.email);
+  return c.json({ ok: true as const, message: EMAIL_CHANGE_MESSAGE });
 });

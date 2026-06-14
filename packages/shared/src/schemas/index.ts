@@ -17,31 +17,29 @@ export const HealthResponseSchema = z.object({
   ts: z.number(),
 });
 
-export const AuthSignupBodySchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  displayName: z.string().min(1).max(100).optional(),
-});
-
-export const AuthLoginBodySchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-
-export const AuthRefreshBodySchema = z.object({
-  refreshToken: z.string().min(1),
-});
-
-export const AuthSessionSchema = z.object({
-  accessToken: z.string(),
-  refreshToken: z.string(),
-  expiresIn: z.number(),
-  tokenType: z.string(),
-  user: z.object({
-    id: z.string().uuid(),
-    email: z.string().email().optional(),
-  }),
-});
+export {
+  AuthEmailChangeBodySchema,
+  AuthEmailChangeResponseSchema,
+  AuthLogoutBodySchema,
+  AuthMeResponseSchema,
+  AuthRefreshBodySchema,
+  AuthSessionItemSchema,
+  AuthSessionsResponseSchema,
+  AuthSessionSchema,
+  OAuthProviderSchema,
+  OtpIntentSchema,
+  OtpSendBodySchema,
+  OtpSendResponseSchema,
+  OtpVerifyBodySchema,
+  type AuthEmailChangeBody,
+  type AuthLogoutBody,
+  type AuthMeResponse,
+  type AuthRefreshBody,
+  type AuthSession,
+  type AuthSessionItem,
+  type OtpSendBody,
+  type OtpVerifyBody,
+} from "./auth.js";
 
 export const ProfileSchema = z.object({
   id: z.string().uuid(),
@@ -93,9 +91,5 @@ export const SpecialtiesResponseSchema = z.object({
   items: z.array(SpecialtySchema),
 });
 
-export type AuthSignupBody = z.infer<typeof AuthSignupBodySchema>;
-export type AuthLoginBody = z.infer<typeof AuthLoginBodySchema>;
-export type AuthRefreshBody = z.infer<typeof AuthRefreshBodySchema>;
-export type AuthSession = z.infer<typeof AuthSessionSchema>;
 export type MeResponse = z.infer<typeof MeResponseSchema>;
 export type GroupFeedResponse = z.infer<typeof GroupFeedResponseSchema>;

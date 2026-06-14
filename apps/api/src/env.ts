@@ -7,6 +7,7 @@ export interface Env {
   CORS_ORIGINS: string;
   RATE_LIMITER: DurableObjectNamespace;
   IDEMPOTENCY: DurableObjectNamespace;
+  SESSION_CACHE?: KVNamespace;
   ANALYTICS?: AnalyticsEngineDataset;
 }
 

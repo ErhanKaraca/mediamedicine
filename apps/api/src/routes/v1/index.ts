@@ -15,7 +15,7 @@ export function createV1Router() {
     type: "http",
     scheme: "bearer",
     bearerFormat: "JWT",
-    description: "Access token from POST /v1/auth/login or /v1/auth/signup",
+    description: "Access token from POST /v1/auth/otp/verify or OAuth callback",
   });
 
   v1.route("/", healthRoutes);
@@ -40,7 +40,7 @@ export function createV1Router() {
     ],
     tags: [
       { name: "System", description: "Health and metadata" },
-      { name: "Auth", description: "Signup, login, refresh, logout (GoTrue proxy)" },
+      { name: "Auth", description: "Passwordless OTP, OAuth, sessions, logout (GoTrue proxy)" },
       { name: "User", description: "Current user and profiles" },
       { name: "Feed", description: "Group feed reads" },
       { name: "Profiles", description: "Public profile reads" },

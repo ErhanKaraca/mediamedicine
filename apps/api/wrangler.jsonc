@@ -27,6 +27,13 @@
       "new_sqlite_classes": ["RateLimiter", "IdempotencyStore"]
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "SESSION_CACHE",
+      "id": "00000000000000000000000000000001",
+      "preview_id": "00000000000000000000000000000001"
+    }
+  ],
   "vars": {
     "ENVIRONMENT": "development",
     "CORS_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
@@ -50,6 +57,13 @@
         {
           "tag": "v1",
           "new_sqlite_classes": ["RateLimiter", "IdempotencyStore"]
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "SESSION_CACHE",
+          "id": "00000000000000000000000000000001",
+          "preview_id": "00000000000000000000000000000001"
         }
       ],
       "vars": {
@@ -81,6 +95,13 @@
         {
           "tag": "v1",
           "new_sqlite_classes": ["RateLimiter", "IdempotencyStore"]
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "SESSION_CACHE",
+          "id": "00000000000000000000000000000001",
+          "preview_id": "00000000000000000000000000000001"
         }
       ],
       "vars": {

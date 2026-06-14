@@ -25,7 +25,14 @@ export function createServiceClient(env: Env): SupabaseClient {
 export async function pingSupabase(env: Env): Promise<"ok" | "degraded" | "down"> {
   try {
     const client = createAnonClient(env);
-    const { error } = await client.from("profiles").select("id").limit(1);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const { error } = await client
+      .from("profiles")
+      .select("id")
+      .limit(1)
+      .abortSignal(controller.signal);
+    clearTimeout(timer);
     if (error) return "degraded";
     return "ok";
   } catch {

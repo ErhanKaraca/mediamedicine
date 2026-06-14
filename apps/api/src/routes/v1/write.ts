@@ -3,6 +3,9 @@ import { EDGE_ROUTE_MAP } from "@mediamedicine/shared/edge-map";
 import { ApiError } from "@mediamedicine/shared/errors";
 import type { AppVariables, Env } from "../../env";
 import { proxyToEdge } from "../../lib/edge-proxy";
+import { gotrueLogout } from "../../lib/gotrue";
+import { invalidateSessionCache } from "../../lib/gotrue-admin";
+import { clearRefreshCookieHeader, isSecureRequest, readRefreshCookie } from "../../lib/session-cookie";
 
 export const writeRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>();
 
@@ -56,6 +59,18 @@ writeRoutes.all("/*", async (c) => {
       body = await c.req.json();
     } catch {
       body = {};
+    }
+  }
+
+  if (mapping.functionName === "delete-account" && mapping.requiresAuth) {
+    const token = c.get("accessToken");
+    const userId = c.get("userId");
+    if (token && userId) {
+      const refreshToken = readRefreshCookie(c.req.header("Cookie"));
+      await gotrueLogout(c.env, token, refreshToken, "global");
+      await invalidateSessionCache(c.env, userId);
+      const secure = isSecureRequest(c.req.url);
+      c.header("Set-Cookie", clearRefreshCookieHeader(secure), { append: true });
     }
   }
 

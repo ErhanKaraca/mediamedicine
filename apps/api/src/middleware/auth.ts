@@ -9,9 +9,11 @@ const PUBLIC_PATH_PREFIXES = [
   "/v1/openapi.json",
   "/v1/docs",
   "/v1/swagger",
-  "/v1/auth/signup",
-  "/v1/auth/login",
+  "/v1/auth/otp/send",
+  "/v1/auth/otp/verify",
   "/v1/auth/refresh",
+  "/v1/auth/oauth",
+  "/v1/auth/callback",
   "/v1/specialties",
   "/v1/link-preview",
 ];

@@ -8,13 +8,17 @@ interface RateLimitConfig {
 }
 
 const ROUTE_LIMITS: Record<string, RateLimitConfig> = {
-  "/v1/auth/login": { limit: 10, windowSeconds: 60 },
-  "/v1/auth/signup": { limit: 5, windowSeconds: 60 },
+  "/v1/auth/otp/send": { limit: 20, windowSeconds: 60 },
+  "/v1/auth/otp/verify": { limit: 30, windowSeconds: 60 },
   "/v1/auth/refresh": { limit: 30, windowSeconds: 60 },
 };
 
 const DEFAULT_LIMIT: RateLimitConfig = { limit: 120, windowSeconds: 60 };
 const WRITE_LIMIT: RateLimitConfig = { limit: 60, windowSeconds: 60 };
+
+function isOtpAuthPath(path: string): boolean {
+  return path === "/v1/auth/otp/send" || path === "/v1/auth/otp/verify";
+}
 
 function getLimit(path: string, method: string): RateLimitConfig {
   if (ROUTE_LIMITS[path]) return ROUTE_LIMITS[path]!;
@@ -26,9 +30,13 @@ export const rateLimitMiddleware = createMiddleware<{ Bindings: Env; Variables: 
   async (c, next) => {
     const path = new URL(c.req.url).pathname;
     const config = getLimit(path, c.req.method);
-    const userId = c.get("userId");
+
     const ip = c.req.header("CF-Connecting-IP") ?? c.req.header("X-Forwarded-For") ?? "unknown";
-    const key = userId ? `user:${userId}:${path}` : `ip:${ip}:${path}`;
+    const key = isOtpAuthPath(path)
+      ? `ip:${ip}:${path}`
+      : c.get("userId")
+        ? `user:${c.get("userId")}:${path}`
+        : `ip:${ip}:${path}`;
 
     const id = c.env.RATE_LIMITER.idFromName(key);
     const stub = c.env.RATE_LIMITER.get(id);

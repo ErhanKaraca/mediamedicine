@@ -32,15 +32,17 @@ describe("API smoke", () => {
     expect(res.headers.get("X-Request-Id")).toBeTruthy();
   });
 
-  it("GET /v1/openapi.json returns OpenAPI spec", async () => {
+  it("GET /v1/openapi.json includes OTP auth paths", async () => {
     const req = new Request("http://localhost/v1/openapi.json");
     const ctx = createExecutionContext();
     const res = await app.fetch(req, env, ctx);
     await waitOnExecutionContext(ctx);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { openapi: string; info: { title: string } };
-    expect(body.openapi).toBe("3.1.0");
-    expect(body.info.title).toBe("MediaMedicine API");
+    const body = (await res.json()) as { paths?: Record<string, unknown> };
+    expect(body.paths?.["/auth/otp/send"]).toBeTruthy();
+    expect(body.paths?.["/auth/otp/verify"]).toBeTruthy();
+    expect(body.paths?.["/auth/sessions"]).toBeTruthy();
+    expect(body.paths?.["/auth/login"]).toBeFalsy();
   });
 
   it("GET /v1/docs serves Swagger UI", async () => {
