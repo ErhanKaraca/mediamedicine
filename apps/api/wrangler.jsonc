@@ -30,8 +30,8 @@
   "kv_namespaces": [
     {
       "binding": "SESSION_CACHE",
-      "id": "00000000000000000000000000000001",
-      "preview_id": "00000000000000000000000000000001"
+      "id": "10c55cadf0a84cddb19c0a0ed56e844c",
+      "preview_id": "d0071996ecaf408e88b3536cc128f104"
     }
   ],
   "vars": {
@@ -62,8 +62,8 @@
       "kv_namespaces": [
         {
           "binding": "SESSION_CACHE",
-          "id": "00000000000000000000000000000001",
-          "preview_id": "00000000000000000000000000000001"
+          "id": "ba1ee6706da945f6be4dc9ee8412af78",
+          "preview_id": "531abb241eff4d4baa73d63f8839a9b2"
         }
       ],
       "vars": {
@@ -100,8 +100,8 @@
       "kv_namespaces": [
         {
           "binding": "SESSION_CACHE",
-          "id": "00000000000000000000000000000001",
-          "preview_id": "00000000000000000000000000000001"
+          "id": "345d6c8394444cdeac93349146271ef1",
+          "preview_id": "6b0a5627781e4f33bf0774aad9d128fa"
         }
       ],
       "vars": {

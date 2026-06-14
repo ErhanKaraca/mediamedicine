@@ -69,6 +69,20 @@ Plain text variable olarak değil, **Secret (encrypted)** kullanın.
 
 Dashboard → Workers → Analytics Engine → Enable. Dataset adı `mediamedicine_api` (`wrangler.jsonc` binding ile aynı). Binding production env içinde tanımlıdır; miras alınmaz.
 
+### `KV namespace not found` (code: 10041)
+
+`SESSION_CACHE` binding için gerçek KV namespace gerekir. Placeholder ID kullanmayın.
+
+```bash
+cd apps/api
+npx wrangler kv namespace create SESSION_CACHE --env production
+npx wrangler kv namespace create SESSION_CACHE --preview --env production
+```
+
+Çıkan `id` / `preview_id` değerlerini `wrangler.jsonc` → `env.production.kv_namespaces` içine yazın.
+
+Mevcut production namespace ID: `345d6c8394444cdeac93349146271ef1`
+
 ### Development vars ile deploy
 
 Log'da `ENVIRONMENT: "development"` görüyorsanız deploy command `--env production` eksiktir.
