@@ -28,11 +28,31 @@ Production deploy sonrası beklenen bindings:
 - `CORS_ORIGINS`: mediamedicine.net domainleri
 - Custom domain: `api.mediamedicine.net`
 
-## Secrets (Dashboard)
+## Secrets (Dashboard veya Wrangler)
 
-Workers & Pages → **mediamedicine-api** → Settings → **Variables and Secrets**
+**Önerilen yol:** `wrangler secret bulk` (kalıcı, deploy sonrası silinmez)
 
-Production environment için **Secret** olarak ekleyin:
+```bash
+cd apps/api
+npx wrangler secret bulk secrets.json --env production
+pnpm run deploy
+```
+
+Dashboard → Worker → **Variables and Secrets** (Build içindeki değil) → **Production** → **Secret** olarak da eklenebilir.
+
+### Sık hata: Dashboard variable → Git deploy ile silinir
+
+Dashboard'dan **plain text Variable** eklediyseniz, sonraki `wrangler deploy` (GitHub CI) bu değişkenleri **sıfırlayabilir**. Wrangler `secret list --env production` boş döner; health'te `"supabase":"down"` görürsünüz.
+
+**Doğrulama:**
+
+```bash
+npx wrangler secret list --env production   # 4 secret görünmeli
+curl https://api.mediamedicine.net/v1/health  # "supabase":"ok"
+npx wrangler versions view <VERSION_ID> --env production
+```
+
+Aktif sürümde `ENVIRONMENT=production`, `CORS_ORIGINS` mediamedicine domainleri ve **secrets** bloğunda 4 Supabase secret olmalı.
 
 | Name | Kaynak |
 |------|--------|
@@ -41,7 +61,7 @@ Production environment için **Secret** olarak ekleyin:
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → API (service_role) |
 | `SUPABASE_JWT_SECRET` | Supabase Dashboard → API → JWT Secret |
 
-Wrangler CLI ile `secret bulk` kullanmıyorsanız hepsi burada tanımlı olmalı.
+Plain text variable olarak değil, **Secret (encrypted)** kullanın.
 
 ## Bilinen hatalar
 

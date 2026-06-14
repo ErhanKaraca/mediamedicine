@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mediamedicine-api",
+  "account_id": "45fb3def0a1d9c4b89887c4b5fb5ad58",
   "main": "src/index.ts",
   "compatibility_date": "2025-02-24",
   "compatibility_flags": ["nodejs_compat"],

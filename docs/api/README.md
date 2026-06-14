@@ -44,9 +44,17 @@ Worker varsayılan olarak `http://127.0.0.1:8787` adresinde çalışır.
 | `CORS_ORIGINS` | Virgülle ayrılmış origin allowlist |
 | `ENVIRONMENT` | `development` \| `staging` \| `production` |
 
-## OpenAPI
+## OpenAPI & Swagger UI
 
-Canlı spec: `GET /v1/openapi.json`
+| URL | Açıklama |
+|-----|----------|
+| `GET /v1/docs` | Swagger UI (interaktif) |
+| `GET /v1/swagger` | `/v1/docs` yönlendirmesi |
+| `GET /v1/openapi.json` | OpenAPI 3.1 spec (JSON) |
+
+Production: https://api.mediamedicine.net/v1/docs
+
+Swagger'da **Authorize** → login'den aldığınız `accessToken` (Bearer).
 
 Statik export (Dart client kaynağı):
 

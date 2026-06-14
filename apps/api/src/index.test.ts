@@ -32,6 +32,17 @@ describe("API smoke", () => {
     expect(res.headers.get("X-Request-Id")).toBeTruthy();
   });
 
+  it("GET /v1/docs serves Swagger UI", async () => {
+    const req = new Request("http://localhost/v1/docs");
+    const ctx = createExecutionContext();
+    const res = await app.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html.toLowerCase()).toContain("swagger");
+  });
+
   it("protected route returns 401 without token", async () => {
     const req = new Request("http://localhost/v1/me");
     const ctx = createExecutionContext();

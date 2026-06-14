@@ -7,6 +7,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/",
   "/v1/health",
   "/v1/openapi.json",
+  "/v1/docs",
+  "/v1/swagger",
   "/v1/auth/signup",
   "/v1/auth/login",
   "/v1/auth/refresh",

@@ -29,7 +29,8 @@ app.get("/", (c) =>
   c.json({
     service: "mediamedicine-api",
     version: "v1",
-    docs: "/v1/openapi.json",
+    docs: "/v1/docs",
+    openapi: "/v1/openapi.json",
   }),
 );
 
