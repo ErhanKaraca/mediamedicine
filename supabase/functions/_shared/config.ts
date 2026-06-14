@@ -34,6 +34,8 @@ export const STORAGE_BUCKETS = {
   postMedia: "post-media",
   postAttachments: "post-attachments",
   messageMedia: "message-media",
+  kycDocuments: "kyc-documents",
+  accountExports: "account-exports",
 } as const;
 
 export const EVIDENCE_SOURCE_TYPES = [

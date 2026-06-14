@@ -22,6 +22,9 @@ function isOtpAuthPath(path: string): boolean {
 
 function getLimit(path: string, method: string): RateLimitConfig {
   if (ROUTE_LIMITS[path]) return ROUTE_LIMITS[path]!;
+  if (path === "/v1/me/specialties" && method === "PUT") {
+    return { limit: 10, windowSeconds: 3600 };
+  }
   if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") return WRITE_LIMIT;
   return DEFAULT_LIMIT;
 }

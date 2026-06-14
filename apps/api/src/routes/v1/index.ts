@@ -2,9 +2,11 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AppVariables, Env } from "../../env";
 import { authRoutes } from "./auth";
 import { docsRoutes } from "./docs";
-import { feedRoutes, profileRoutes } from "./feed";
+import { feedRoutes, profileRoutes as publicProfileRoutes } from "./feed";
 import { healthRoutes } from "./health";
 import { meRoutes } from "./me";
+import { profileRoutes } from "./profile";
+import { kycRoutes } from "./kyc";
 import { specialtyRoutes } from "./specialties";
 import { writeRoutes } from "./write";
 
@@ -21,8 +23,10 @@ export function createV1Router() {
   v1.route("/", healthRoutes);
   v1.route("/", authRoutes);
   v1.route("/", meRoutes);
-  v1.route("/", feedRoutes);
   v1.route("/", profileRoutes);
+  v1.route("/", kycRoutes);
+  v1.route("/", feedRoutes);
+  v1.route("/", publicProfileRoutes);
   v1.route("/", specialtyRoutes);
   v1.route("/", docsRoutes);
 
@@ -42,6 +46,9 @@ export function createV1Router() {
       { name: "System", description: "Health and metadata" },
       { name: "Auth", description: "Passwordless OTP, OAuth, sessions, logout (GoTrue proxy)" },
       { name: "User", description: "Current user and profiles" },
+      { name: "Legal", description: "Consent and privacy" },
+      { name: "KYC", description: "Know your customer verification" },
+      { name: "Privacy", description: "Data export and account deletion" },
       { name: "Feed", description: "Group feed reads" },
       { name: "Profiles", description: "Public profile reads" },
       { name: "Catalog", description: "Reference data" },

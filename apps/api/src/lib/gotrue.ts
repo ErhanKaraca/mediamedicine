@@ -233,3 +233,60 @@ export function buildOAuthAuthorizeUrl(
 }
 
 export { serviceHeaders };
+
+export async function gotrueMfaListFactors(env: Env, accessToken: string) {
+  const res = await fetch(`${authBaseUrl(env)}/factors`, {
+    headers: bearerHeaders(env, accessToken),
+  });
+  const data = await parseJson<{ factors?: unknown[]; msg?: string }>(res);
+  if (!res.ok) throw mapGoTrueError(res.status, data);
+  return data.factors ?? [];
+}
+
+export async function gotrueMfaEnrollTotp(env: Env, accessToken: string) {
+  const res = await fetch(`${authBaseUrl(env)}/factors`, {
+    method: "POST",
+    headers: bearerHeaders(env, accessToken),
+    body: JSON.stringify({ factor_type: "totp", friendly_name: "Authenticator" }),
+  });
+  const data = await parseJson<Record<string, unknown>>(res);
+  if (!res.ok) throw mapGoTrueError(res.status, data);
+  return data;
+}
+
+export async function gotrueMfaVerifyTotp(
+  env: Env,
+  accessToken: string,
+  factorId: string,
+  code: string,
+) {
+  const res = await fetch(`${authBaseUrl(env)}/factors/${factorId}/verify`, {
+    method: "POST",
+    headers: bearerHeaders(env, accessToken),
+    body: JSON.stringify({ code, challenge_id: factorId }),
+  });
+  const data = await parseJson<Record<string, unknown>>(res);
+  if (!res.ok) throw mapGoTrueError(res.status, data);
+  return data;
+}
+
+export async function gotrueMfaChallenge(env: Env, accessToken: string, factorId: string) {
+  const res = await fetch(`${authBaseUrl(env)}/factors/${factorId}/challenge`, {
+    method: "POST",
+    headers: bearerHeaders(env, accessToken),
+  });
+  const data = await parseJson<Record<string, unknown>>(res);
+  if (!res.ok) throw mapGoTrueError(res.status, data);
+  return data;
+}
+
+export async function gotrueMfaUnenroll(env: Env, accessToken: string, factorId: string) {
+  const res = await fetch(`${authBaseUrl(env)}/factors/${factorId}`, {
+    method: "DELETE",
+    headers: bearerHeaders(env, accessToken),
+  });
+  if (!res.ok) {
+    const data = await parseJson<GoTrueErrorBody>(res);
+    throw mapGoTrueError(res.status, data);
+  }
+}

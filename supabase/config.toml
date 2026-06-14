@@ -141,6 +141,18 @@ public = false
 file_size_limit = "25MiB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4"]
 
+# Private bucket for KYC identity documents.
+[storage.buckets."kyc-documents"]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["application/pdf", "image/png", "image/jpeg", "image/webp"]
+
+# Private bucket for GDPR account export packages.
+[storage.buckets."account-exports"]
+public = false
+file_size_limit = "50MiB"
+allowed_mime_types = ["application/zip", "application/json"]
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true
@@ -469,6 +481,33 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.edit-post]
+verify_jwt = true
+
+[functions.kyc-upload-init]
+verify_jwt = true
+
+[functions.kyc-create-case]
+verify_jwt = true
+
+[functions.kyc-update-case]
+verify_jwt = true
+
+[functions.kyc-attach-document]
+verify_jwt = true
+
+[functions.kyc-delete-document]
+verify_jwt = true
+
+[functions.kyc-submit-case]
+verify_jwt = true
+
+[functions.kyc-withdraw-case]
+verify_jwt = true
+
+[functions.kyc-review-case]
+verify_jwt = true
+
+[functions.account-export]
 verify_jwt = true
 
 [edge_runtime]

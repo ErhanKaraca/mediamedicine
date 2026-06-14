@@ -37,6 +37,11 @@ import {
   gotrueExchangePkce,
   gotrueGetUser,
   gotrueLogout,
+  gotrueMfaChallenge,
+  gotrueMfaEnrollTotp,
+  gotrueMfaListFactors,
+  gotrueMfaUnenroll,
+  gotrueMfaVerifyTotp,
   gotrueRefresh,
   gotrueSendOtp,
   gotrueUpdateEmail,
@@ -479,4 +484,112 @@ authRoutes.openapi(emailChangeRoute, async (c) => {
   const body = c.req.valid("json");
   await gotrueUpdateEmail(c.env, token, body.email);
   return c.json({ ok: true as const, message: EMAIL_CHANGE_MESSAGE });
+});
+
+const mfaFactorsRoute = createRoute({
+  method: "get",
+  path: "/auth/mfa/factors",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({ factors: z.array(z.record(z.unknown())) }),
+        },
+      },
+      description: "MFA factors",
+    },
+  },
+});
+
+authRoutes.openapi(mfaFactorsRoute, async (c) => {
+  const token = c.get("accessToken");
+  if (!token) throw new ApiError("unauthorized", "Not authenticated", 401);
+  const factors = await gotrueMfaListFactors(c.env, token);
+  return c.json({ factors });
+});
+
+const mfaEnrollRoute = createRoute({
+  method: "post",
+  path: "/auth/mfa/totp/enroll",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: { content: { "application/json": { schema: z.record(z.unknown()) } }, description: "TOTP enroll" },
+  },
+});
+
+authRoutes.openapi(mfaEnrollRoute, async (c) => {
+  const token = c.get("accessToken");
+  if (!token) throw new ApiError("unauthorized", "Not authenticated", 401);
+  const data = await gotrueMfaEnrollTotp(c.env, token);
+  return c.json(data);
+});
+
+const mfaVerifyRoute = createRoute({
+  method: "post",
+  path: "/auth/mfa/totp/verify",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({ factorId: z.string().uuid(), code: z.string().min(6).max(8) }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: { content: { "application/json": { schema: z.record(z.unknown()) } }, description: "TOTP verified" },
+  },
+});
+
+authRoutes.openapi(mfaVerifyRoute, async (c) => {
+  const token = c.get("accessToken");
+  if (!token) throw new ApiError("unauthorized", "Not authenticated", 401);
+  const body = c.req.valid("json");
+  const data = await gotrueMfaVerifyTotp(c.env, token, body.factorId, body.code);
+  return c.json(data);
+});
+
+const mfaChallengeRoute = createRoute({
+  method: "post",
+  path: "/auth/mfa/challenge",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: { content: { "application/json": { schema: z.object({ factorId: z.string().uuid() }) } } },
+  },
+  responses: {
+    200: { content: { "application/json": { schema: z.record(z.unknown()) } }, description: "MFA challenge" },
+  },
+});
+
+authRoutes.openapi(mfaChallengeRoute, async (c) => {
+  const token = c.get("accessToken");
+  if (!token) throw new ApiError("unauthorized", "Not authenticated", 401);
+  const body = c.req.valid("json");
+  const data = await gotrueMfaChallenge(c.env, token, body.factorId);
+  return c.json(data);
+});
+
+const mfaUnenrollRoute = createRoute({
+  method: "delete",
+  path: "/auth/mfa/totp/{factorId}",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ factorId: z.string().uuid() }) },
+  responses: {
+    204: { description: "Factor removed" },
+  },
+});
+
+authRoutes.openapi(mfaUnenrollRoute, async (c) => {
+  const token = c.get("accessToken");
+  if (!token) throw new ApiError("unauthorized", "Not authenticated", 401);
+  const { factorId } = c.req.valid("param");
+  await gotrueMfaUnenroll(c.env, token, factorId);
+  return c.body(null, 204);
 });

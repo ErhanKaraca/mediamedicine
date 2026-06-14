@@ -23,10 +23,15 @@ Deno.serve(async (req) => {
       bio?: string;
       ownerProfileId?: string;
       visibility?: "public" | "private";
+      kycCaseId?: string;
     };
 
-    if (!body.slug || !body.displayName || !body.ownerProfileId) {
-      return errorResponse("invalid_body", "slug, displayName, ownerProfileId required", 400);
+    if (!body.slug || !body.displayName || !body.ownerProfileId || !body.kycCaseId) {
+      return errorResponse(
+        "invalid_body",
+        "slug, displayName, ownerProfileId, kycCaseId required",
+        400,
+      );
     }
 
     const { data: ownerProfile } = await supabase
@@ -39,8 +44,30 @@ Deno.serve(async (req) => {
       return errorResponse("forbidden", "Not your profile", 403);
     }
 
-    if (!["user", "professional"].includes(ownerProfile.account_kind)) {
-      return errorResponse("invalid_owner", "Page owner must be user or professional profile", 400);
+    if (ownerProfile.account_kind !== "professional") {
+      return errorResponse("professional_required", "Page owner must be a verified professional", 403);
+    }
+
+    const { data: kycCase } = await supabase
+      .from("kyc_cases")
+      .select("id, user_id, case_type, target_entity_type, status, payload")
+      .eq("id", body.kycCaseId)
+      .single();
+
+    if (!kycCase || kycCase.user_id !== user.id) {
+      return errorResponse("kyc_not_found", "KYC case not found", 404);
+    }
+    if (
+      kycCase.case_type !== "healthcare_institution" ||
+      kycCase.target_entity_type !== "page" ||
+      kycCase.status !== "approved"
+    ) {
+      return errorResponse("kyc_not_approved", "Approved institution KYC case required", 403);
+    }
+
+    const intendedSlug = (kycCase.payload as Record<string, unknown>)?.intendedSlug as string | undefined;
+    if (intendedSlug && intendedSlug.toLowerCase() !== body.slug.toLowerCase()) {
+      return errorResponse("slug_mismatch", "Slug does not match approved KYC case", 409);
     }
 
     const admin = createAdminClient();
@@ -68,6 +95,7 @@ Deno.serve(async (req) => {
         profile_id: pageProfile.id,
         created_by_user_id: user.id,
         visibility: body.visibility ?? "public",
+        kyc_case_id: body.kycCaseId,
       })
       .select("id")
       .single();
@@ -90,10 +118,12 @@ Deno.serve(async (req) => {
       await admin.from("profiles").delete().eq("id", pageProfile.id);
       return errorResponse("member_failed", memberErr.message, 400);
     }
+
     return json({
       pageId: page.id,
       profileId: pageProfile.id,
       slug: body.slug,
+      kycCaseId: body.kycCaseId,
     }, { status: 201 });
   } catch (e) {
     log.error("unexpected", e);

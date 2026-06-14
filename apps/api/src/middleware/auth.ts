@@ -15,6 +15,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/v1/auth/oauth",
   "/v1/auth/callback",
   "/v1/specialties",
+  "/v1/consent-versions",
+  "/v1/kyc/case-types",
   "/v1/link-preview",
 ];
 

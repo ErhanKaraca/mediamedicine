@@ -93,3 +93,30 @@ export const SpecialtiesResponseSchema = z.object({
 
 export type MeResponse = z.infer<typeof MeResponseSchema>;
 export type GroupFeedResponse = z.infer<typeof GroupFeedResponseSchema>;
+
+export {
+  PatchMeProfileBodySchema,
+  PatchMeSettingsBodySchema,
+  PutMeSpecialtiesBodySchema,
+  SlugAvailableQuerySchema,
+  SlugAvailableResponseSchema,
+  ConsentVersionsResponseSchema,
+  PostMeConsentsBodySchema,
+  MeConsentsResponseSchema,
+  MeCapabilitiesResponseSchema,
+  MeSpecialtiesResponseSchema,
+  type PatchMeProfileBody,
+  type PatchMeSettingsBody,
+  type PutMeSpecialtiesBody,
+  type MeCapabilitiesResponse,
+} from "./profile.js";
+
+export {
+  KycCaseTypesResponseSchema,
+  KycCasesResponseSchema,
+  KycCaseSchema,
+  CreateKycCaseBodySchema,
+  ProfessionalUpgradeResponseSchema,
+  AccountExportResponseSchema,
+  type KycCase,
+} from "./kyc.js";
