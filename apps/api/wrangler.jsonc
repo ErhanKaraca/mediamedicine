@@ -9,6 +9,13 @@
   "observability": {
     "enabled": true
   },
+  // Root = production — Cloudflare CI runs `npx wrangler deploy` (no --env flag)
+  "routes": [
+    {
+      "pattern": "api.mediamedicine.net",
+      "custom_domain": true
+    }
+  ],
   "analytics_engine_datasets": [
     {
       "binding": "ANALYTICS",
@@ -30,15 +37,28 @@
   "kv_namespaces": [
     {
       "binding": "SESSION_CACHE",
-      "id": "10c55cadf0a84cddb19c0a0ed56e844c",
-      "preview_id": "d0071996ecaf408e88b3536cc128f104"
+      "id": "345d6c8394444cdeac93349146271ef1",
+      "preview_id": "6b0a5627781e4f33bf0774aad9d128fa"
     }
   ],
   "vars": {
-    "ENVIRONMENT": "development",
-    "CORS_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
+    "ENVIRONMENT": "production",
+    "CORS_ORIGINS": "https://mediamedicine.net,https://www.mediamedicine.net,https://app.mediamedicine.net"
   },
   "env": {
+    "local": {
+      "vars": {
+        "ENVIRONMENT": "development",
+        "CORS_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
+      },
+      "kv_namespaces": [
+        {
+          "binding": "SESSION_CACHE",
+          "id": "10c55cadf0a84cddb19c0a0ed56e844c",
+          "preview_id": "d0071996ecaf408e88b3536cc128f104"
+        }
+      ]
+    },
     "staging": {
       "name": "mediamedicine-api-staging",
       "analytics_engine_datasets": [
@@ -69,44 +89,6 @@
       "vars": {
         "ENVIRONMENT": "staging",
         "CORS_ORIGINS": ""
-      }
-    },
-    "production": {
-      "name": "mediamedicine-api",
-      "routes": [
-        {
-          "pattern": "api.mediamedicine.net",
-          "custom_domain": true
-        }
-      ],
-      "analytics_engine_datasets": [
-        {
-          "binding": "ANALYTICS",
-          "dataset": "mediamedicine_api"
-        }
-      ],
-      "durable_objects": {
-        "bindings": [
-          { "name": "RATE_LIMITER", "class_name": "RateLimiter" },
-          { "name": "IDEMPOTENCY", "class_name": "IdempotencyStore" }
-        ]
-      },
-      "migrations": [
-        {
-          "tag": "v1",
-          "new_sqlite_classes": ["RateLimiter", "IdempotencyStore"]
-        }
-      ],
-      "kv_namespaces": [
-        {
-          "binding": "SESSION_CACHE",
-          "id": "345d6c8394444cdeac93349146271ef1",
-          "preview_id": "6b0a5627781e4f33bf0774aad9d128fa"
-        }
-      ],
-      "vars": {
-        "ENVIRONMENT": "production",
-        "CORS_ORIGINS": "https://mediamedicine.net,https://www.mediamedicine.net,https://app.mediamedicine.net"
       }
     }
   }
