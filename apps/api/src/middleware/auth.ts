@@ -1,7 +1,7 @@
 import { ApiError } from "@mediamedicine/shared/errors";
 import { createMiddleware } from "hono/factory";
-import * as jose from "jose";
 import type { AppVariables, Env } from "../env";
+import { verifyAccessToken } from "../lib/jwt-verify";
 
 const PUBLIC_PATH_PREFIXES = [
   "/",
@@ -37,21 +37,9 @@ export const authMiddleware = createMiddleware<{ Bindings: Env; Variables: AppVa
     }
 
     const token = header.slice(7);
-    try {
-      const secret = new TextEncoder().encode(c.env.SUPABASE_JWT_SECRET);
-      const { payload } = await jose.jwtVerify(token, secret, {
-        algorithms: ["HS256"],
-      });
-      const sub = payload.sub;
-      if (!sub || typeof sub !== "string") {
-        throw new ApiError("unauthorized", "Invalid token subject", 401);
-      }
-      c.set("userId", sub);
-      c.set("accessToken", token);
-    } catch (err) {
-      if (err instanceof ApiError) throw err;
-      throw new ApiError("unauthorized", "Invalid or expired token", 401);
-    }
+    const sub = await verifyAccessToken(c.env, token);
+    c.set("userId", sub);
+    c.set("accessToken", token);
 
     await next();
   },

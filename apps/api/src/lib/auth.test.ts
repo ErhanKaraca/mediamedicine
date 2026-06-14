@@ -61,3 +61,37 @@ describe("session cookie helpers", () => {
     expect(token).toBe("abc123");
   });
 });
+
+describe("jwt-verify", () => {
+  it("verifies HS256 access tokens with JWT secret", async () => {
+    const { SignJWT } = await import("jose");
+    const { verifyAccessToken } = await import("./jwt-verify");
+
+    const secret = new TextEncoder().encode(
+      "super-secret-jwt-token-with-at-least-32-characters-long",
+    );
+    const issuer = "http://127.0.0.1:54321/auth/v1";
+    const token = await new SignJWT({ role: "authenticated" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("user-123")
+      .setIssuer(issuer)
+      .setAudience("authenticated")
+      .setExpirationTime("1h")
+      .sign(secret);
+
+    const sub = await verifyAccessToken(
+      {
+        SUPABASE_URL: "http://127.0.0.1:54321",
+        SUPABASE_ANON_KEY: "test",
+        SUPABASE_SERVICE_ROLE_KEY: "test",
+        SUPABASE_JWT_SECRET: "super-secret-jwt-token-with-at-least-32-characters-long",
+        ENVIRONMENT: "development",
+        CORS_ORIGINS: "",
+        RATE_LIMITER: {} as DurableObjectNamespace,
+        IDEMPOTENCY: {} as DurableObjectNamespace,
+      },
+      token,
+    );
+    expect(sub).toBe("user-123");
+  });
+});

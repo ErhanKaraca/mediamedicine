@@ -167,11 +167,12 @@ export async function gotrueGetUser(env: Env, accessToken: string): Promise<GoTr
     headers: bearerHeaders(env, accessToken),
   });
 
-  const data = await parseJson<{ user?: GoTrueUser } & GoTrueErrorBody>(res);
-  if (!res.ok || !data.user?.id) {
+  const data = await parseJson<{ user?: GoTrueUser } & GoTrueUser & GoTrueErrorBody>(res);
+  const user = data.user?.id ? data.user : data.id ? data : undefined;
+  if (!res.ok || !user?.id) {
     throw mapGoTrueError(res.status, data);
   }
-  return data.user;
+  return user;
 }
 
 export async function gotrueUpdateEmail(
