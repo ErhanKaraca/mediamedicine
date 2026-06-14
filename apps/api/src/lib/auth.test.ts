@@ -42,6 +42,32 @@ describe("sessionLastUsedAt ordering", () => {
     };
     expect(sessionLastUsedAt(session)).toBe("2024-06-01T00:00:00Z");
   });
+
+  it("maps session rows for API response", async () => {
+    const { toSessionItems } = await import("./gotrue-admin");
+    const items = toSessionItems(
+      [
+        {
+          id: "aa62e0fc-c6aa-4418-aa21-4a6f83e82a54",
+          user_id: "a4fe30ba-9af1-4947-92f1-38fc58dfa3ab",
+          created_at: "2026-06-14T21:34:19.327944+00:00",
+          updated_at: "2026-06-14T21:34:19.327944+00:00",
+          ip: "2a06:98c0:3600::103/128",
+        },
+      ],
+      "aa62e0fc-c6aa-4418-aa21-4a6f83e82a54",
+      new Map([
+        [
+          "aa62e0fc-c6aa-4418-aa21-4a6f83e82a54",
+          { deviceName: "web", platform: "ios" },
+        ],
+      ]),
+    );
+
+    expect(items[0]?.ip).toBe("2a06:98c0:3600::103");
+    expect(items[0]?.current).toBe(true);
+    expect(items[0]?.platform).toBe("ios");
+  });
 });
 
 describe("oauth PKCE", () => {

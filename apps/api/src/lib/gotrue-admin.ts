@@ -3,7 +3,7 @@ import type { AuthSessionItem } from "@mediamedicine/shared/schemas";
 import type { Env } from "../env";
 import { createServiceClient } from "./supabase";
 
-const SESSION_CACHE_TTL_SECONDS = 30;
+const SESSION_CACHE_TTL_SECONDS = 60;
 const MAX_ACTIVE_SESSIONS = 10;
 
 export interface GoTrueAdminSession {
@@ -23,6 +23,24 @@ function cacheKey(userId: string): string {
 export async function invalidateSessionCache(env: Env, userId: string): Promise<void> {
   if (!env.SESSION_CACHE) return;
   await env.SESSION_CACHE.delete(cacheKey(userId));
+}
+
+async function putSessionCache(
+  env: Env,
+  userId: string,
+  sessions: GoTrueAdminSession[],
+): Promise<void> {
+  if (!env.SESSION_CACHE) return;
+  try {
+    await env.SESSION_CACHE.put(cacheKey(userId), JSON.stringify(sessions), {
+      expirationTtl: SESSION_CACHE_TTL_SECONDS,
+    });
+  } catch (err) {
+    console.error("session cache put failed", {
+      userId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 async function fetchUserSessions(env: Env, userId: string): Promise<GoTrueAdminSession[]> {
@@ -50,13 +68,7 @@ export async function listUserSessionsCached(
   }
 
   const sessions = await fetchUserSessions(env, userId);
-
-  if (env.SESSION_CACHE) {
-    await env.SESSION_CACHE.put(cacheKey(userId), JSON.stringify(sessions), {
-      expirationTtl: SESSION_CACHE_TTL_SECONDS,
-    });
-  }
-
+  await putSessionCache(env, userId, sessions);
   return sessions;
 }
 
@@ -91,19 +103,30 @@ export function toSessionItems(
   currentSessionId: string | undefined,
   deviceMeta: Map<string, { deviceName?: string; platform?: string }>,
 ): AuthSessionItem[] {
+  const allowedPlatforms = new Set(["ios", "android", "web"]);
+
   return sessions.map((s) => {
     const meta = deviceMeta.get(s.id);
+    const platform = meta?.platform;
     return {
       id: s.id,
       createdAt: s.created_at,
       lastUsedAt: sessionLastUsedAt(s),
       userAgent: s.user_agent ?? undefined,
-      ip: s.ip ?? undefined,
+      ip: normalizeSessionIp(s.ip),
       deviceName: meta?.deviceName,
-      platform: meta?.platform as AuthSessionItem["platform"],
+      platform:
+        platform && allowedPlatforms.has(platform)
+          ? (platform as AuthSessionItem["platform"])
+          : undefined,
       current: currentSessionId ? s.id === currentSessionId : undefined,
     };
   });
+}
+
+function normalizeSessionIp(ip: string | null | undefined): string | undefined {
+  if (!ip) return undefined;
+  return ip.replace(/\/\d+$/, "");
 }
 
 export async function enforceMaxSessions(
