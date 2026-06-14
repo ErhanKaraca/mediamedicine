@@ -1,0 +1,13 @@
+{
+  "extends": "@mediamedicine/config/tsconfig/workers.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@mediamedicine/shared": ["../../packages/shared/src/index.ts"],
+      "@mediamedicine/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts", "scripts/**/*"],
+  "references": [{ "path": "../../packages/shared" }]
+}

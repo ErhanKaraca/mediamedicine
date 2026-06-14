@@ -1,0 +1,23 @@
+{
+  "name": "@mediamedicine/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mediamedicine/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@mediamedicine/config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

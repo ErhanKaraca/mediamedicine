@@ -1,0 +1,55 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mediamedicine-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-02-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "mediamedicine_api"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "RATE_LIMITER", "class_name": "RateLimiter" },
+      { "name": "IDEMPOTENCY", "class_name": "IdempotencyStore" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RateLimiter", "IdempotencyStore"]
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "development",
+    "CORS_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
+  },
+  "env": {
+    "staging": {
+      "name": "mediamedicine-api-staging",
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "CORS_ORIGINS": ""
+      }
+    },
+    "production": {
+      "name": "mediamedicine-api",
+      "routes": [
+        {
+          "pattern": "api.mediamedicine.net",
+          "custom_domain": true
+        }
+      ],
+      "vars": {
+        "ENVIRONMENT": "production",
+        "CORS_ORIGINS": "https://mediamedicine.net,https://www.mediamedicine.net,https://app.mediamedicine.net"
+      }
+    }
+  }
+}

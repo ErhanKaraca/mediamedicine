@@ -1,0 +1,1 @@
+Fetch https://developers.cloudflare.com/agent-setup/prompt.md

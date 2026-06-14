@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.turbo/
+.wrangler/
+.dev.vars
+*.log
+.DS_Store
+.env
+.env.local
+.env.*.local
+
+# Local deploy scripts (may contain secrets)
+dev/*.bat
+*.bat
