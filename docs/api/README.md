@@ -91,10 +91,10 @@ pnpm --filter @mediamedicine/api test
 
 Production domain: **https://api.mediamedicine.net**
 
-Yerel deploy script (gitignore — secret içerir): `dev/deploy-api.bat`
+GitHub → Cloudflare CI ayarları: [cloudflare-ci.md](./cloudflare-ci.md)
 
 ```bash
-pnpm --filter @mediamedicine/api deploy --env production
+pnpm --filter @mediamedicine/api deploy
 ```
 
-Wrangler secrets ortam başına ayrı set edilmelidir. Custom domain `wrangler.jsonc` production env içinde tanımlıdır.
+Dashboard deploy command: `pnpm run deploy` (root: `apps/api`). Secret'lar Cloudflare Dashboard → Variables and Secrets üzerinden tanımlanır.
