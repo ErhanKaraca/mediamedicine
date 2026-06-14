@@ -25,7 +25,6 @@ export function createV1Router() {
   v1.route("/", profileRoutes);
   v1.route("/", specialtyRoutes);
   v1.route("/", docsRoutes);
-  v1.route("/", writeRoutes);
 
   v1.doc("/openapi.json", {
     openapi: "3.1.0",
@@ -48,6 +47,8 @@ export function createV1Router() {
       { name: "Catalog", description: "Reference data" },
     ],
   });
+
+  v1.route("/", writeRoutes);
 
   return v1;
 }

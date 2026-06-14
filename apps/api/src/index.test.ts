@@ -32,6 +32,17 @@ describe("API smoke", () => {
     expect(res.headers.get("X-Request-Id")).toBeTruthy();
   });
 
+  it("GET /v1/openapi.json returns OpenAPI spec", async () => {
+    const req = new Request("http://localhost/v1/openapi.json");
+    const ctx = createExecutionContext();
+    const res = await app.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { openapi: string; info: { title: string } };
+    expect(body.openapi).toBe("3.1.0");
+    expect(body.info.title).toBe("MediaMedicine API");
+  });
+
   it("GET /v1/docs serves Swagger UI", async () => {
     const req = new Request("http://localhost/v1/docs");
     const ctx = createExecutionContext();
