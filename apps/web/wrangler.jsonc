@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mediamedicine-web",
+  "account_id": "45fb3def0a1d9c4b89887c4b5fb5ad58",
+  "compatibility_date": "2025-02-24",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  // Root = production — Cloudflare CI runs `npx wrangler deploy` (no --env flag)
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    {
+      "pattern": "app.mediamedicine.net",
+      "custom_domain": true
+    }
+  ]
+}
