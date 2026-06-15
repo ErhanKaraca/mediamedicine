@@ -14,7 +14,11 @@
   },
   "routes": [
     {
-      "pattern": "app.mediamedicine.net",
+      "pattern": "mediamedicine.net",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.mediamedicine.net",
       "custom_domain": true
     }
   ]

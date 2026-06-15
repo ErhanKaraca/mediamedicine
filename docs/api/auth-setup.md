@@ -13,10 +13,11 @@ Production (`mm-prod`) Dashboard yapılandırması. Worker secrets ayrı — bkz
 
 ## Authentication → URL Configuration
 
-- [ ] **Site URL**: `https://app.mediamedicine.net` (veya production web URL)
+- [ ] **Site URL**: `https://mediamedicine.net`
 - [ ] **Redirect URLs** allowlist:
   - `https://api.mediamedicine.net/v1/auth/callback`
-  - `https://app.mediamedicine.net/**`
+  - `https://mediamedicine.net/**`
+  - `https://www.mediamedicine.net/**`
 
 ## Authentication → Email (SMTP)
 

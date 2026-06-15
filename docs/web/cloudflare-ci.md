@@ -17,7 +17,7 @@ Cloudflare Git entegrasyonu deploy adımını otomatik çalıştırır (`npx wra
 - Worker adı: `mediamedicine-web`
 - Çıktı: Vite `dist/`
 - SPA yönlendirme: `not_found_handling: single-page-application`
-- Custom domain: `app.mediamedicine.net`
+- Custom domain: `mediamedicine.net`, `www.mediamedicine.net`
 
 ## Lokal doğrulama
 
