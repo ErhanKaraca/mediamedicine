@@ -18,18 +18,23 @@ import { VerifyPage } from '@/routes/auth/verify'
 import { OnboardingTypePage } from '@/routes/onboarding/type'
 import { OnboardingProfilePage } from '@/routes/onboarding/profile'
 import { OnboardingSpecialtiesPage } from '@/routes/onboarding/specialties'
-import { FeedPage } from '@/routes/app/feed'
-import { ExplorePage } from '@/routes/app/explore'
-import { ProfilePage } from '@/routes/app/profile'
-import { PostDetailPage } from '@/routes/app/post'
-import { GroupsPage } from '@/routes/app/groups'
-import { MessagesPage } from '@/routes/app/messages'
-import { MessagesConversationPage } from '@/routes/app/messages-conversation'
-import { NotificationsPage } from '@/routes/app/notifications'
-import { SavedPage } from '@/routes/app/saved'
+import { FeedPage } from '@/routes/app/feed/page'
+import { ExplorePage } from '@/routes/app/explore/page'
+import { ProfilePage } from '@/routes/app/profile/page'
+import { PostDetailPage } from '@/routes/app/posts/page'
+import { GroupsPage } from '@/routes/app/groups/page'
+import { MessagesPage } from '@/routes/app/messages/page'
+import { MessagesConversationPage } from '@/routes/app/messages/conversation'
+import { NotificationsPage } from '@/routes/app/notifications/page'
+import { SavedPage } from '@/routes/app/saved/page'
 import { SettingsIndexPage } from '@/routes/app/settings/index'
 import { SettingsProfilePage } from '@/routes/app/settings/profile'
 import { SettingsNotificationsPage } from '@/routes/app/settings/notifications'
+import { GroupDetailPage } from '@/routes/app/g/page'
+import { GroupMembersPage } from '@/routes/app/g/members'
+import { GroupSettingsPage } from '@/routes/app/g/settings'
+import { GroupModerationPage } from '@/routes/app/groups/moderation'
+import { CreateGroupPage } from '@/routes/app/groups/new'
 import { ComingSoonPage, HelpPage } from '@/routes/app/coming-soon'
 
 // Root route
@@ -154,11 +159,31 @@ const groupsRoute = createRoute({
 const groupDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/g/$slug',
-  component: function GroupDetailPage() {
-    const { slug } = groupDetailRoute.useParams()
-    const name = slug.replace(/-/g, ' ')
-    return <ComingSoonPage title={name.charAt(0).toUpperCase() + name.slice(1)} />
-  },
+  component: GroupDetailPage,
+})
+
+const groupMembersRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/g/$slug/members',
+  component: GroupMembersPage,
+})
+
+const groupSettingsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/g/$slug/settings',
+  component: GroupSettingsPage,
+})
+
+const groupModerationRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/groups/moderation',
+  component: GroupModerationPage,
+})
+
+const createGroupRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/groups/new',
+  component: CreateGroupPage,
 })
 
 const messagesRoute = createRoute({
@@ -259,6 +284,10 @@ const routeTree = rootRoute.addChildren([
     postDetailRoute,
     groupsRoute,
     groupDetailRoute,
+    groupMembersRoute,
+    groupSettingsRoute,
+    groupModerationRoute,
+    createGroupRoute,
     coursesRoute,
     articlesRoute,
     journalsRoute,

@@ -100,7 +100,7 @@ export function AppSidebar() {
 
       <Separator className="my-5 bg-border/80" />
 
-      <div className="flex flex-1 flex-col items-center gap-5">
+      <div className="flex flex-col items-center gap-5">
         <NavLink
           to="/saved"
           icon={Bookmark}

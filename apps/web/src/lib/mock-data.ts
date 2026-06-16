@@ -160,6 +160,11 @@ export const mockPosts: Post[] = [
     isSaved: true,
     hasEvidence: true,
     tags: ['kardiyoloji', 'kalp_yetmezligi', 'SGLT2', 'HFrEF'],
+    parentContext: {
+      kind: 'group',
+      slug: 'kardiyoloji-uzmanlar',
+      name: 'Kardiyoloji Uzmanları Türkiye',
+    },
     evidences: [
       {
         title: 'Empagliflozin in Heart Failure with a Preserved Ejection Fraction',
@@ -196,6 +201,11 @@ export const mockPosts: Post[] = [
     isSaved: false,
     hasEvidence: true,
     tags: ['nöroloji', 'epilepsi', 'antiepileptik'],
+    parentContext: {
+      kind: 'group',
+      slug: 'noroloji-forumu',
+      name: 'Nöroloji Forumu',
+    },
     evidences: [
       {
         title: 'Brivaracetam vs Levetiracetam: Neuropsychiatric Adverse Events',
@@ -595,8 +605,8 @@ export const mockPosts: Post[] = [
     tags: ['kardiyoloji', 'PAD', 'antikoagülan'],
     parentContext: {
       kind: 'group',
-      slug: 'kardiyoloji-dernegi',
-      name: 'Türk Kardiyoloji Derneği',
+      slug: 'kardiyoloji-uzmanlar',
+      name: 'Kardiyoloji Uzmanları Türkiye',
     },
   },
   {

@@ -109,6 +109,7 @@ export interface Comment {
   content: string
   createdAt: string
   likeCount: number
+  parentCommentId?: string
 }
 
 export interface Message {

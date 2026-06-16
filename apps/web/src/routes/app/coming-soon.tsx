@@ -21,9 +21,9 @@ export function ComingSoonPage({ titleKey, title }: ComingSoonPageProps) {
 export function HelpPage() {
   const { t } = useTranslation()
   return (
-    <div className="p-8 text-center">
+    <div className="max-w-2xl mx-auto px-4 py-12 text-center">
       <h1 className="text-xl font-bold mb-2">{t('help.title')}</h1>
-      <p className="text-muted-foreground">{t('help.comingSoon')}</p>
+      <p className="text-sm text-muted-foreground">{t('help.comingSoon')}</p>
     </div>
   )
 }
